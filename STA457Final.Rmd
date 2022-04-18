@@ -1,0 +1,145 @@
+---
+title: "Analysis and Forecast of the Annual Counts of Major Earthquakes"
+author: Chengle Yang
+output: pdf_document
+header-includes:
+    - \usepackage{setspace}\doublespacing
+fontsize: 12pt
+thanks: 'Code and data are available in this GitHub repository: [chle1999/STA457_EQcount](https://github.com/chle1999/STA457_EQcount).'
+bibliography: references.bib
+abstract: "The violent shaking of the ground produces huge property losses and personal injuries. Modeling the earthquake and making the prediction may reduce this damage. In this report, we use ARIMA(1,1,1) model to forecast the next ten years' annual earthquake major count based on the data from 1900 to 2006. We forecast that the mean earthquake count will stay between 12 and 13 from 2007. Furthermore, we do the spectrum analysis and find that none of the first three predominant spectrum is significant. Therefore, no specific dominant period of mean earthquake count is found. We believe the fitted model is not precise enough and there may exist more potential factors that can be used to generate more reliable models.
+ \\par
+ \\textbf {Keywords:} Earthquake, annual count, time series, astsa, ARIMA model, forecast, residual, spectrum." 
+ 
+---
+
+```{r setup, include=FALSE, echo=FALSE, message=FALSE, warning=FALSE}
+# install the necessary library
+#install.packages("astsa")
+#install.packages("kableExtra")
+#install.packages("tinytex")
+library(astsa)
+library(kableExtra)
+library(tinytex)
+data(EQcount)
+```
+
+# Introduction
+The violent shaking of the ground produces huge property losses and personal injuries. For example, a sequence of two strike-slip earthquakes occurred in 2016 caused significant damage and disruption to the Kumamoto region.[@C1] Also radioactive material began leaking into the atmosphere and the Pacific Ocean after 2011 Fukushima nuclear disaster.[@C2] Thus, modeling the earthquake and making the prediction may reduce the damage. I chose EQcount dataset as my research object. It recorded the annual counts of major earthquakes (magnitude 7 and above) in the world between 1900 and 2006. Thus, there exist a total of 107 observations. And our purpose is to forecast the earthquake number in the future ten years in order to minimize loss of life and property[@C3].
+
+# Statistical Methods
+
+First of all, we draw a time series plot of the annual counts of major earthquakes (magnitude 7 and above) from 1900 to 2006. From Figure 1, we can observe that the original data has a slightly decreasing trend, which is also not stationary.
+
+```{r, message=FALSE, echo=FALSE, warning=FALSE,results='hide',fig.keep='all', fig.height=3, fig.align='center', fig.cap="Original time series plot for annual EQ count"}
+plot.ts(EQcount, main="The initial dataset without diff")
+```
+
+In this dataset, we have a total of 107 samples which is enough for modeling. However, we still need stationary data with a constant expected number of major earthquake counts and constant variance in order to build a model. By difference the data EQcount, we have the stationary Figure 2 with a constant expectation value over the years and a roughly constant variance.
+
+```{r, message=FALSE, echo=FALSE, warning=FALSE,results='hide',fig.keep='all', fig.height=3, fig.align='center', fig.cap="Time series plot for annual EQ count after one diff"}
+diff1 <- diff(EQcount, 1)
+plot.ts(diff1, main="The dataset with one diff")
+```
+
+For finding the most suitable ARIMA(p,d,q) model for the data, we need to take a look at autocorrelation function (ACF) and partial autocorrelation function (PACF), which are shown in Figure 3. From the diagram, we can observe that ACF cuts off at $lag=1$ and PACF cuts off at $lag=1 or 2$. Thus, we get two ARIMA models, ARIMA(1,1,1) and ARIMA(2,1,1), where the d=1 means that the first differential of the original data.
+
+```{r, message=FALSE, echo=FALSE, warning=FALSE,results='hide',fig.keep='all', fig.height=3, fig.align='center', fig.cap="ACF and PACF for the annual EQ count"}
+acf2(diff(EQcount), 50)
+```
+
+By checking the validation of the models, we want to use the standardized residuals to show there is no obvious pattern and no major outliers for the model. Figures 4 and 5 shows the residual analysis for these two possible models.
+
+```{r, message=FALSE, echo=FALSE, warning=FALSE,results='hide',fig.keep='all',fig.height=3, fig.align='center', fig.cap="Residual analysis for the ARIMA(1,1,1) fit for annual EQ count"}
+# first model
+model1 <- sarima(EQcount,1,1,1)
+model1
+```
+```{r, message=FALSE, echo=FALSE, warning=FALSE,results='hide',fig.keep='all', fig.height=3, fig.align='center', fig.cap="Residual analysis for the ARIMA(2,1,1) fit for annual EQ count"}
+# second model
+model2 <- sarima(EQcount,2,1,1)
+model2
+```
+
+From the diagrams, we can observe that both two models have no obvious patterns and all of their residuals are insignificant at the 5% level. So we can conclude that they are following the randomness assumption. Also, both normal Q-Q plots of the two models are straight lines with no outliers. So we can conclude that they follow the assumption of normality. What's more, both two models' p-values for the Ljung-Box statistic are higher than the significance level for all lags. So we do not reject the null hypothesis, which indicates that all the residuals are independent.
+
+Therefore, in order to select the more fitted model in these two models, we compared their AIC, BIC, and AICc values, and the results are shown below in Table 1.
+
+```{r, message=FALSE, echo=FALSE, warning=FALSE, fig.width = 2, fig.height=3, fig.align='center'}
+data.frame("model"=c("ARIMA(1,1,1)", "ARIMA(2,1,1)"), "AIC"=c(model1$AIC, model2$AIC), "AICc"=c(model1$AICc, model2$AICc), "BIC"=c(model1$BIC, model2$BIC)) %>% kbl(caption="AIC, AICc and BIC for three fitted models") %>% kable_paper("striped", full_width = F)
+```
+
+From the table, we can observe that ARIMA(1,1,1) has smaller values of AIC, BIC, and
+AICc values. Also, based on our previous analysis for the models' performance in residual check, we would like to choose ARIMA(1,1,1) as our final model:\
+
+$(1-\theta_1 B)X_t=\mu + (1+\Theta_1B)W_t$\
+
+where $\mu$ is the mean annual major earthquake count over the years based on the model, $X_t$ is time series at time t and $W_t$ is the white noise at time t, which $W_t$ ~ $N(0, \sigma_w^2)$. $\theta_1$ is the parameter for the time series $X_t$ and $\Theta_1$ is the parameter for the corresponding white noise.
+
+# Results
+
+Table 2 summarise the parameter estimations and corresponding p-values for the model ARIMA(1,1,1):
+
+```{r, message=FALSE, echo=FALSE, warning=FALSE, fig.height=3, fig.align='center'}
+data.frame("coefficient"=c("ar1", "ma1", "constant"), "Estimation"=c(model1$ttable[1,1], model1$ttable[2,1], model1$ttable[3,1]), "P_values"=c(model1$ttable[1,4], model1$ttable[2,4], model1$ttable[3,4])) %>% kbl(caption="Parameter estimation and p-values of fitted model ARIMA(1,1,1)") %>% kable_paper("striped", full_width = F)
+```
+
+Based on the significance test result, the p-value of ma1 is smaller than the significance level, and the rest are larger. This means that there is no enough evidence to show that the mean annual major earthquake count over the years is -0.0138, similar for ar1. So we finally get an MA1 model, we can still forecast the future annual earthquake count by the following fitted model:\
+$(1-0.1312B)\hat{X_t}=-0.0138 + (1-0.6635B)W_t$
+
+By using the fitted model, we can predict the next 10 years' annual major earthquake count, which is shown in  Figure 6. In the diagram, the annual major earthquake prediction numbers are shown as red dots and corresponding prediction intervals are shown as gray areas.
+
+```{r, message=FALSE, echo=FALSE, warning=FALSE, fig.height=3, fig.align='center', fig.cap="Ten years forecast on Annual Counts of Major Earthquakes"}
+# predict next 10 years
+pred10 <- sarima.for(EQcount,10,1,1,1)
+# give the 95% prediction intervals for each of the ten forecasts
+upper <-pred10$pred + qnorm(0.975) * pred10$se
+lower <-pred10$pred - qnorm(0.975) * pred10$se
+data.frame("Year"=c(2007:2016), "Prediction"=pred10$pred, "Upper_Bound"=upper,"Lower_Bound"=lower) %>% kbl(caption="Ten years forecast using ARIMA(1,1,1) model on Annual Counts of Major Earthquakes with 95 Percent CI") %>% kable_paper("striped", full_width = F)
+```
+
+The Table 3. shows the detailed prediction values of annual major earthquake count with corresponding 95% CI interval bound. From the forecasting results, we can conclude that in the next 10 years(from 2007 to 2016), there exists an stable and horizontal prediction line for the point estimation, which means the annual major earthquake count will between 12 and 13 in next 10 years. The range of 95% confidential interval is becoming wider over the time. But all point estimation are stay in the range, which means the forecast are still precise.\
+
+Then, by performing the periodogram analysis, we could identify the top three predominant periods. Figure 7. presents the periodogram of annual major earthquake count.
+
+```{r, message=FALSE, echo=FALSE, warning=FALSE,results='hide',fig.keep='all', fig.height=3, fig.align='center', fig.cap="Periodogram of Annual Counts of Major Earthquakes"}
+library(MASS)
+# Spectral analysis for EQcount series
+EQcount.per = mvspec(EQcount, log = "no")
+```
+
+From the diagram, we can see there is a peak around 0.0093, closing to the value of 1/107. The first three predominant spectrums with the 95% confidential intervals are shown in Table 4 below.
+
+```{r, message=FALSE, echo=FALSE, warning=FALSE,results='hide',fig.keep='all'}
+P2<-EQcount.per$details[order(EQcount.per$details[,3],decreasing = TRUE),]
+#Identify the first three dominant frequencies for EQcount series
+P2[1,];P2[2,];P2[3,]
+#95Percent CIs for the dominant frequencies for EQcount series
+u1 = 2*P2[1,3]/qchisq(0.025,2)
+l1 = 2*P2[1,3]/qchisq(0.975,2)
+u2 = 2*P2[2,3]/qchisq(0.025,2)
+l2 = 2*P2[2,3]/qchisq(0.975,2)
+u3 = 2*P2[3,3]/qchisq(0.025,2)
+l3 = 2*P2[3,3]/qchisq(0.975,2)
+
+#Create a data frame for the CIs
+Result <- data.frame(Series=c("Period 1", "Period 2", "Period 3"),
+Dominant.Freq=c(P2[1,1], P2[2,1], P2[3,1]), Spec=c(P2[1,3], P2[2,3], P2[3,3]), Lower=c(l1, l2, l3), Upper=c(u1, u2, u3))
+Result[1:2,3:5] = round(Result[1:2,3:5], 4)
+Result %>% kbl(caption="95 Percent CI for Spectrum of the three predominant Periods") %>% kable_paper("striped", full_width = T)
+Result[1:2,3:5] = round(Result[1:2,3:5], 4)
+```
+```{r, message=FALSE, echo=FALSE, warning=FALSE, fig.height=3, fig.align='center'}
+Result %>% kbl(caption="95 Percent CI for Spectrum of the three predominant Periods") %>% kable_paper("striped", full_width = T)
+```
+
+From the table above, we can observe that the 95% confidence intervals for all three periods are large, which means they can not provide useful information for significance. To be more specific, we cannot establish the significance of all three peaks(first, second and third). For the first peak, its periodogram ordinate is 396.2778, it is also lying in the 95% confidential interval of the second and third peaks. For the second peak, its periodogram ordinate is 350.7439, it is also lying in the 95% confidential interval of the first and third peaks. For the third peak, its periodogram ordinate is 176.8623, it is also lying in the 95% confidential interval of the first and second peaks. Thus we cannot establish the significance of all three peaks as there exists an overlap in them.
+
+# Discussion
+
+Based on the combination of prediction of the fitted model and the original data, we can use the model ARIMA(1,1,1) to provide a reasonable prediction. However, there still exist some limitations. for example, we were unable to find a specific period that captures the change in the mean annual major earthquake count by the predominant spectrum analysis in the result part. This can be caused by lacking data and corresponding unclear dominant periods.
+
+The model, ARIMA(1,1,1), may not be the best model for the data. But it passes the residual analysis by following the randomness, normality, and independence assumptions. so I believe it is a reasonably acceptable model for the annual major earthquake count data from 1900 to 2006. but there may exist other possible ARIMA models that can fit the data better and forecast the earthquake count more accurately. I will keep finding them and modeling the data.
+
+\newpage
+Reference
